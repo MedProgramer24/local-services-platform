@@ -60,7 +60,7 @@ export default function BookingPage() {
   const { data: provider, isLoading: isLoadingProvider } = useQuery<Provider>({
     queryKey: ['provider', providerId],
     queryFn: async () => {
-      const response = await api.get(`/providers/${providerId}`);
+      const response = await api.get(`/service-providers/${providerId}`);
       return response.data;
     },
     enabled: !!providerId,

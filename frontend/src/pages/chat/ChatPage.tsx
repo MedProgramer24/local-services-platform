@@ -4,6 +4,7 @@ import Footer from '@/components/Footer';
 import ConversationList from '@/components/chat/ConversationList';
 import ChatWindow from '@/components/chat/ChatWindow';
 import MessageInput from '@/components/chat/MessageInput';
+import ChatDebugPanel from '@/components/chat/ChatDebugPanel';
 import { ConversationProvider, useConversations } from '@/contexts/ConversationContext';
 
 const ChatMainArea: React.FC = () => {
@@ -17,6 +18,9 @@ const ChatMainArea: React.FC = () => {
   
   return (
     <div className="flex-1 flex flex-col h-full">
+      {/* Debug Panel - only in development */}
+      {process.env.NODE_ENV === 'development' && <ChatDebugPanel />}
+      
       {(currentConversation || selectedProviderId) ? (
         <>
           <ChatWindow />

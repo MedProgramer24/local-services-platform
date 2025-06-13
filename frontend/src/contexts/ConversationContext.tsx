@@ -10,6 +10,17 @@ export interface Message {
   conversationId: string;
   senderId: string;
   content: string;
+  messageType: 'text' | 'image' | 'document' | 'audio' | 'file';
+  attachments?: Array<{
+    type: 'image' | 'document' | 'audio' | 'file';
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    url: string;
+    thumbnailUrl?: string;
+    duration?: number;
+  }>;
   timestamp: Date;
   isRead: boolean;
 }
@@ -39,7 +50,7 @@ interface ConversationContextType {
   isConnected: boolean;
   selectedProviderId: string | null;
   createConversation: (participantId: string) => Promise<Conversation>;
-  sendMessage: (conversationId: string, content: string) => Promise<void>;
+  sendMessage: (conversationId: string, content: string, formData?: FormData) => Promise<void>;
   markAsRead: (conversationId: string) => Promise<void>;
   selectConversation: (conversation: Conversation) => void;
   deleteConversation: (conversationId: string) => Promise<void>;
@@ -81,13 +92,18 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
   // Initialize Socket.IO connection
   useEffect(() => {
     if (isAuthenticated && user) {
+      console.log('=== INITIALIZING SOCKET CONNECTION ===');
+      console.log('User ID:', user.id);
+      console.log('User type:', user.type);
+      
       const newSocket = io('http://localhost:5000', {
         query: {
           userId: user.id
         },
         auth: {
           token: localStorage.getItem('token')
-        }
+        },
+        transports: ['websocket', 'polling'] // Ensure fallback
       });
 
       newSocket.on('connect', () => {
@@ -105,6 +121,12 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
         setIsConnected(false);
       });
 
+      newSocket.on('connect_error', (error) => {
+        console.error('=== SOCKET CONNECTION ERROR ===');
+        console.error('Error:', error);
+        setIsConnected(false);
+      });
+
       newSocket.on('newMessage', (message: any) => {
         console.log('=== SOCKET NEW MESSAGE RECEIVED ===');
         console.log('Raw message from socket:', message);
@@ -119,6 +141,8 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
           conversationId: message.conversationId,
           senderId: message.sender._id || message.sender,
           content: message.content,
+          messageType: message.messageType,
+          attachments: message.attachments,
           timestamp: message.createdAt || message.timestamp,
           isRead: message.isRead
         };
@@ -154,6 +178,9 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
       });
 
       newSocket.on('messageRead', (data: { conversationId: string }) => {
+        console.log('=== MESSAGE READ EVENT ===');
+        console.log('Data:', data);
+        
         setMessages(prev => 
           prev.map(msg => 
             msg.conversationId === data.conversationId 
@@ -173,6 +200,7 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
       socketRef.current = newSocket;
 
       return () => {
+        console.log('=== CLEANING UP SOCKET CONNECTION ===');
         newSocket.close();
       };
     }
@@ -248,6 +276,8 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
         conversationId: msg.conversationId,
         senderId: msg.sender._id || msg.sender, // Handle both populated and unpopulated sender
         content: msg.content,
+        messageType: msg.messageType,
+        attachments: msg.attachments,
         timestamp: msg.createdAt || msg.timestamp,
         isRead: msg.isRead
       }));
@@ -294,28 +324,61 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
   };
 
   // Send a message
-  const sendMessage = async (conversationId: string, content: string) => {
+  const sendMessage = async (conversationId: string, content: string, formData?: FormData) => {
     if (!isAuthenticated || !socketRef.current) throw new Error('Not connected');
     
-    const response = await fetch(`http://localhost:5000/api/conversations/${conversationId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({ content })
-    });
+    console.log('=== SENDING MESSAGE ===');
+    console.log('Conversation ID:', conversationId);
+    console.log('Content:', content);
+    console.log('Has attachments:', !!formData);
+    console.log('Socket connected:', !!socketRef.current);
+    console.log('Socket ID:', socketRef.current?.id);
     
-    if (!response.ok) throw new Error('Failed to send message');
-    
-    const data = await response.json();
-    console.log('Message sent successfully:', data.message._id);
-    
-    // Don't add message to state here - let the socket event handle it
-    // This prevents duplicates when the socket event fires
-    
-    // Emit socket event for real-time delivery to conversation room
-    socketRef.current.emit('sendMessage', { conversationId, message: data.message });
+    try {
+      let response;
+      
+      if (formData) {
+        // Send with attachments
+        response = await fetch(`http://localhost:5000/api/conversations/${conversationId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: formData
+        });
+      } else {
+        // Send text only
+        response = await fetch(`http://localhost:5000/api/conversations/${conversationId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ content })
+        });
+      }
+      
+      if (!response.ok) throw new Error('Failed to send message');
+      
+      const data = await response.json();
+      console.log('Message sent successfully:', data.message._id);
+      console.log('Response data:', data);
+      
+      // Don't add message to state here - let the socket event handle it
+      // This prevents duplicates when the socket event fires
+      
+      // Emit socket event for real-time delivery to conversation room
+      if (socketRef.current) {
+        console.log('Emitting sendMessage event to socket');
+        socketRef.current.emit('sendMessage', { conversationId, message: data.message });
+        console.log('SendMessage event emitted');
+      } else {
+        console.error('Socket not available for message emission');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
   };
 
   // Mark conversation as read
@@ -380,6 +443,11 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
       console.log('Joining conversation room:', conversation._id);
       socketRef.current.emit('joinConversation', conversation._id);
       console.log('Join conversation event emitted');
+      
+      // Verify room joining after a short delay
+      setTimeout(() => {
+        console.log('Verifying room membership for conversation:', conversation._id);
+      }, 1000);
     } else {
       console.error('Socket not connected, cannot join conversation room');
     }

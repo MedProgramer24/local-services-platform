@@ -4,7 +4,17 @@ export interface IMessage extends Document {
   conversationId: mongoose.Types.ObjectId;
   sender: mongoose.Types.ObjectId;
   content: string;
-  messageType: 'text' | 'image' | 'file' | 'system';
+  messageType: 'text' | 'image' | 'document' | 'audio' | 'file';
+  attachments: Array<{
+    type: 'image' | 'document' | 'audio' | 'file';
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    url: string;
+    thumbnailUrl?: string; // For images
+    duration?: number; // For audio files (in seconds)
+  }>;
   replyTo?: mongoose.Types.ObjectId;
   isRead: boolean;
   readAt?: Date;
@@ -30,9 +40,44 @@ const messageSchema = new Schema<IMessage>({
   },
   messageType: {
     type: String,
-    enum: ['text', 'image', 'file', 'system'],
+    enum: ['text', 'image', 'document', 'audio', 'file'],
     default: 'text'
   },
+  attachments: [{
+    type: {
+      type: String,
+      enum: ['image', 'document', 'audio', 'file'],
+      required: true
+    },
+    filename: {
+      type: String,
+      required: true
+    },
+    originalName: {
+      type: String,
+      required: true
+    },
+    mimeType: {
+      type: String,
+      required: true
+    },
+    size: {
+      type: Number,
+      required: true
+    },
+    url: {
+      type: String,
+      required: true
+    },
+    thumbnailUrl: {
+      type: String,
+      required: false
+    },
+    duration: {
+      type: Number,
+      required: false
+    }
+  }],
   replyTo: {
     type: Schema.Types.ObjectId,
     ref: 'Message',

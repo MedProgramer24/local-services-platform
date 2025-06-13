@@ -84,13 +84,37 @@ export default function ConversationList() {
   useEffect(() => {
     if (user?.type === 'provider') {
       setLoadingCustomers(true);
+      console.log('=== FETCHING CUSTOMERS ===');
+      console.log('User type:', user.type);
+      console.log('User ID:', user.id);
+      
       axios.get('http://localhost:5000/api/auth/customers', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       })
-        .then(res => setCustomers(res.data.customers || res.data))
-        .catch(() => setCustomers([]))
+        .then(res => {
+          console.log('=== CUSTOMERS FETCHED ===');
+          console.log('Raw customers data:', res.data);
+          const customersData = res.data.customers || res.data;
+          console.log('Processed customers:', customersData);
+          
+          // Log each customer's ID structure
+          customersData.forEach((customer: any, index: number) => {
+            console.log(`Customer ${index + 1}:`, {
+              id: customer.id || customer._id,
+              name: customer.name,
+              email: customer.email,
+              idType: typeof (customer.id || customer._id)
+            });
+          });
+          
+          setCustomers(customersData);
+        })
+        .catch((error) => {
+          console.error('Error fetching customers:', error);
+          setCustomers([]);
+        })
         .finally(() => setLoadingCustomers(false));
     }
   }, [user]);
@@ -101,7 +125,7 @@ export default function ConversationList() {
     // Map providerId to conversation
     const conversationMap = new Map();
     
-    console.log('=== MERGING PROVIDERS AND CONVERSATIONS ===');
+    console.log('=== MERGING PROVIDERS AND CONVERSATIONS (CUSTOMER) ===');
     console.log('Current user ID:', user.id);
     console.log('All conversations:', conversations);
     console.log('All providers:', providers);
@@ -128,35 +152,89 @@ export default function ConversationList() {
     
     console.log('\nFinal conversation map:', Array.from(conversationMap.entries()));
     
-    mergedList = providers.map(provider => {
-      console.log(`\n--- Processing Provider ${provider.id || provider._id} ---`);
-      console.log('Provider ID:', provider.id || provider._id, 'Type:', typeof (provider.id || provider._id));
-      
-      const conv = conversationMap.get(provider.id || provider._id);
-      console.log(`Provider ${provider.id || provider._id} (${provider.name || provider.businessName}) -> Conversation:`, conv?._id || 'No conversation');
-      
-      return {
+    // Create a list that includes both existing conversations and available providers
+    const existingConversationProviders = new Set(conversationMap.keys());
+    const allProviders = new Set(providers.map(p => p.id || p._id));
+    
+    console.log('Existing conversation providers:', Array.from(existingConversationProviders));
+    console.log('All providers:', Array.from(allProviders));
+    
+    // First, add all providers that have conversations
+    mergedList = providers
+      .filter(provider => conversationMap.has(provider.id || provider._id))
+      .map(provider => {
+        const conv = conversationMap.get(provider.id || provider._id);
+        console.log(`Provider ${provider.id || provider._id} (${provider.name || provider.businessName}) -> Existing conversation:`, conv?._id);
+        return {
+          provider,
+          conversation: conv
+        };
+      });
+    
+    // Then, add providers that don't have conversations yet
+    const providersWithoutConversations = providers.filter(provider => 
+      !conversationMap.has(provider.id || provider._id)
+    );
+    
+    console.log('Providers without conversations:', providersWithoutConversations.length);
+    
+    providersWithoutConversations.forEach(provider => {
+      console.log(`Provider ${provider.id || provider._id} (${provider.name || provider.businessName}) -> No conversation yet`);
+      mergedList.push({
         provider,
-        conversation: conv || null
-      };
+        conversation: null
+      });
     });
     
-    console.log('\nFinal merged list:', mergedList);
+    console.log('\nFinal merged list for customer:', mergedList);
+    console.log('Total items in merged list:', mergedList.length);
+    console.log('Items with conversations:', mergedList.filter(item => item.conversation).length);
+    console.log('Items without conversations:', mergedList.filter(item => !item.conversation).length);
   } else if (user?.type === 'provider') {
     // Map customerId to conversation
-    const conversationMap = new Map(
-      conversations.map(conv => {
-        const other = conv.participants.find((p: any) => p.id !== user.id);
-        return [other?.id, conv];
-      })
-    );
+    const conversationMap = new Map();
+    
+    console.log('=== MERGING CUSTOMERS AND CONVERSATIONS (PROVIDER) ===');
+    console.log('Current user ID:', user.id);
+    console.log('All conversations:', conversations);
+    console.log('All customers:', customers);
+    
+    // Build conversation map with detailed logging
+    conversations.forEach((conv, index) => {
+      console.log(`\n--- Processing Conversation ${index + 1} ---`);
+      console.log('Conversation ID:', conv._id);
+      console.log('All participants:', conv.participants);
+      
+      const other = conv.participants.find((p: any) => {
+        console.log('Comparing participant:', p.id || p._id, 'with user:', user.id);
+        console.log('Participant type:', typeof (p.id || p._id), 'User type:', typeof user.id);
+        return (p.id || p._id) !== user.id;
+      });
+      
+      console.log('Other participant found:', other);
+      
+      if (other) {
+        conversationMap.set(other.id || other._id, conv);
+        console.log(`Mapped customer ${other.id || other._id} to conversation ${conv._id}`);
+      }
+    });
+    
+    console.log('\nFinal conversation map:', Array.from(conversationMap.entries()));
+    
     mergedList = customers.map(customer => {
-      const conv = conversationMap.get(customer.id);
+      console.log(`\n--- Processing Customer ${customer.id || customer._id} ---`);
+      console.log('Customer ID:', customer.id || customer._id, 'Type:', typeof (customer.id || customer._id));
+      
+      const conv = conversationMap.get(customer.id || customer._id);
+      console.log(`Customer ${customer.id || customer._id} (${customer.name}) -> Conversation:`, conv?._id || 'No conversation');
+      
       return {
         customer,
         conversation: conv || null
       };
     });
+    
+    console.log('\nFinal merged list:', mergedList);
   }
 
   // Filter merged list by search
@@ -241,6 +319,25 @@ export default function ConversationList() {
     console.log('\n=== CONVERSATION ISOLATION DEBUG ===');
     console.log('Total conversations:', conversations.length);
     console.log('Total providers:', providers.length);
+    console.log('Total customers:', customers.length);
+    console.log('User type:', user?.type);
+    console.log('User ID:', user?.id);
+    
+    // Log all conversations with their participants
+    conversations.forEach((conv, index) => {
+      console.log(`\nConversation ${index + 1}:`, {
+        id: conv._id,
+        participants: conv.participants.map((p: any) => ({
+          id: p.id || p._id,
+          name: p.name,
+          email: p.email,
+          type: p.type,
+          idType: typeof (p.id || p._id)
+        })),
+        lastMessage: conv.lastMessage,
+        unreadCount: conv.unreadCount
+      });
+    });
     
     // Check if any conversation is shared across multiple providers
     const conversationToProviders = new Map();

@@ -1,5 +1,6 @@
 import express from 'express';
 import { auth } from '../middleware/auth';
+import { upload } from '../middleware/upload';
 import {
   getConversations,
   getConversation,
@@ -24,13 +25,13 @@ router.get('/:conversationId', auth, getConversation);
 // Create a new conversation
 router.post('/', auth, createConversation);
 
-// Send a message in a conversation
-router.post('/:conversationId/messages', auth, sendMessage);
+// Send a message in a conversation (with file upload support)
+router.post('/:conversationId/messages', auth, upload.array('attachments', 5), sendMessage);
 
 // Mark conversation as read
 router.post('/:conversationId/read', auth, markAsRead);
 
-// Delete a conversation (soft delete)
+// Delete a conversation
 router.delete('/:conversationId', auth, deleteConversation);
 
 export default router; 

@@ -13,6 +13,7 @@ import servicesRoutes from './routes/services';
 import bookingsRoutes from './routes/bookings';
 import providerRoutes from './routes/provider';
 import conversationRoutes from './routes/conversations';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -65,6 +66,9 @@ app.use('/api/bookings', bookingsRoutes);
 app.use('/api/provider', providerRoutes);
 app.use('/api/conversations', conversationRoutes);
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Health check route
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -83,40 +87,79 @@ interface UserSocketMap {
 const userSocketMap: UserSocketMap = {};
 
 io.on('connection', (socket: Socket) => {
+  console.log('=== SOCKET CONNECTION ===');
+  console.log('Socket ID:', socket.id);
+  
   // Authenticate user (for demo, userId is sent as query param)
   const userId = socket.handshake.query.userId as string;
   if (userId) {
     userSocketMap[userId] = socket.id;
     socket.join(userId); // Join room for private messages
+    console.log('User joined personal room:', userId);
+    console.log('Total connected users:', Object.keys(userSocketMap).length);
   }
 
   // Join conversation room
   socket.on('joinConversation', (conversationId: string) => {
+    console.log('=== JOINING CONVERSATION ===');
+    console.log('Socket ID:', socket.id);
+    console.log('User ID:', userId);
+    console.log('Conversation ID:', conversationId);
+    
     socket.join(conversationId);
+    console.log(`User ${userId} joined conversation room: ${conversationId}`);
+    
+    // Get all sockets in this room
+    io.in(conversationId).fetchSockets().then(sockets => {
+      console.log(`Room ${conversationId} now has ${sockets.length} participants`);
+    });
   });
 
   // Leave conversation room
   socket.on('leaveConversation', (conversationId: string) => {
+    console.log('=== LEAVING CONVERSATION ===');
+    console.log('Socket ID:', socket.id);
+    console.log('User ID:', userId);
+    console.log('Conversation ID:', conversationId);
+    
     socket.leave(conversationId);
+    console.log(`User ${userId} left conversation room: ${conversationId}`);
   });
 
   // Handle sending a message
   socket.on('sendMessage', (data: any) => {
+    console.log('=== SOCKET SEND MESSAGE ===');
+    console.log('Socket ID:', socket.id);
+    console.log('User ID:', userId);
+    console.log('Data:', data);
+    
     // data: { conversationId, message }
     // Broadcast to all in the conversation room
     io.to(data.conversationId).emit('newMessage', data.message);
+    console.log(`Message broadcasted to conversation room: ${data.conversationId}`);
   });
 
   // Handle marking as read
   socket.on('markAsRead', (data: any) => {
+    console.log('=== MARK AS READ ===');
+    console.log('Socket ID:', socket.id);
+    console.log('User ID:', userId);
+    console.log('Data:', data);
+    
     // data: { conversationId, userId }
-    io.to(data.conversationId).emit('messagesRead', { conversationId: data.conversationId, userId: data.userId });
+    io.to(data.conversationId).emit('messageRead', { conversationId: data.conversationId, userId: data.userId });
   });
 
   // Handle disconnect
   socket.on('disconnect', () => {
+    console.log('=== SOCKET DISCONNECT ===');
+    console.log('Socket ID:', socket.id);
+    console.log('User ID:', userId);
+    
     if (userId) {
       delete userSocketMap[userId];
+      console.log('User removed from socket map');
+      console.log('Remaining connected users:', Object.keys(userSocketMap).length);
     }
   });
 });

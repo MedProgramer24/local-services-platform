@@ -46,9 +46,38 @@ const serviceProviderValidation = [
 // --- NEW: Get all providers for chat sidebar ---
 router.get('/', auth, async (req, res) => {
   try {
-    const providers = await ServiceProvider.find({ isActive: true }).populate('user');
-    res.json({ providers });
+    console.log('=== FETCHING PROVIDERS FOR CHAT ===');
+    const providers = await ServiceProvider.find({ isActive: true }).populate('user', 'firstName lastName businessName email');
+    
+    console.log('Raw providers from database:', providers.length);
+    
+    const formattedProviders = providers.map(provider => {
+      const user = provider.user as any;
+      const formattedProvider = {
+        id: user._id, // This should match the conversation participant ID
+        _id: user._id,
+        name: user.businessName || `${user.firstName} ${user.lastName || ''}`.trim(),
+        businessName: user.businessName,
+        email: user.email,
+        contactInfo: {
+          email: user.email
+        }
+      };
+      
+      console.log('Formatted provider:', {
+        id: formattedProvider.id,
+        name: formattedProvider.name,
+        businessName: formattedProvider.businessName,
+        email: formattedProvider.email
+      });
+      
+      return formattedProvider;
+    });
+    
+    console.log('Formatted providers for chat:', formattedProviders.length);
+    res.json({ providers: formattedProviders });
   } catch (err) {
+    console.error('Error fetching providers for chat:', err);
     res.status(500).json({ message: 'Failed to fetch providers' });
   }
 });

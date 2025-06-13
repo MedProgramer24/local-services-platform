@@ -3,6 +3,7 @@ import { Conversation } from '../models/Conversation';
 import { Message } from '../models/Message';
 import { User } from '../models/User';
 import { AuthRequest } from '../types/auth';
+import { getFileType } from '../middleware/upload';
 
 // Get all conversations for a user
 export const getConversations = async (req: AuthRequest, res: Response) => {
@@ -208,7 +209,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     }
 
     const { conversationId } = req.params;
-    const { content, messageType = 'text', attachments, replyTo } = req.body;
+    const { content, messageType = 'text', replyTo } = req.body;
     const userId = req.user._id;
 
     // Verify conversation exists and user is participant
@@ -222,13 +223,45 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'المحادثة غير موجودة' });
     }
 
+    // Process attachments if any
+    const attachments: any[] = [];
+    if (req.files && Array.isArray(req.files)) {
+      for (const file of req.files) {
+        const fileType = getFileType(file.mimetype);
+        const attachment = {
+          type: fileType,
+          filename: file.filename,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          url: `/uploads/chat/${fileType === 'image' ? 'images' : fileType === 'audio' ? 'audio' : 'documents'}/${file.filename}`,
+          thumbnailUrl: fileType === 'image' ? `/uploads/chat/images/${file.filename}` : undefined
+        };
+        attachments.push(attachment);
+      }
+    }
+
+    // Determine message type based on content and attachments
+    let finalMessageType = messageType;
+    if (attachments.length > 0) {
+      if (attachments.every(att => att.type === 'image')) {
+        finalMessageType = 'image';
+      } else if (attachments.every(att => att.type === 'audio')) {
+        finalMessageType = 'audio';
+      } else if (attachments.every(att => att.type === 'document')) {
+        finalMessageType = 'document';
+      } else {
+        finalMessageType = 'file';
+      }
+    }
+
     // Create message
     const message = new Message({
       conversationId,
       sender: userId,
-      content,
-      messageType,
-      attachments: attachments || [],
+      content: content || (attachments.length > 0 ? 'Attachment' : ''),
+      messageType: finalMessageType,
+      attachments: attachments,
       replyTo: replyTo || null
     });
 
@@ -254,8 +287,24 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     // Emit socket event for real-time delivery
     const io = req.app.get('io');
     if (io) {
-      console.log('Emitting newMessage to conversation:', conversationId);
+      console.log('=== EMITTING NEW MESSAGE ===');
+      console.log('Conversation ID:', conversationId);
+      console.log('Message ID:', message._id);
+      console.log('Sender ID:', userId);
+      console.log('Message content:', content);
+      console.log('Attachments:', attachments.length);
+      
+      // Emit to conversation room
       io.to(conversationId.toString()).emit('newMessage', message);
+      console.log(`Message emitted to conversation room: ${conversationId}`);
+      
+      // Also emit to individual user rooms as backup
+      if (otherParticipant) {
+        io.to(otherParticipant.toString()).emit('newMessage', message);
+        console.log(`Message also emitted to user room: ${otherParticipant}`);
+      }
+    } else {
+      console.error('Socket.io instance not available');
     }
 
     return res.status(201).json({ 

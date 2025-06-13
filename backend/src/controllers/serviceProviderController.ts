@@ -1,10 +1,15 @@
 import { Request, Response } from 'express';
 import { ServiceProvider } from '../models/ServiceProvider';
 import { ServiceCategory } from '../models/ServiceCategory';
+import { AuthRequest } from '../types/express';
 
 // Create a new service provider
-export const createServiceProvider = async (req: Request, res: Response) => {
+export const createServiceProvider = async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Please authenticate.' });
+    }
+
     const {
       businessName,
       description,
@@ -37,18 +42,22 @@ export const createServiceProvider = async (req: Request, res: Response) => {
 
     await serviceProvider.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       message: 'Service provider created successfully',
       serviceProvider
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error creating service provider', error });
+    return res.status(500).json({ message: 'Error creating service provider', error });
   }
 };
 
 // Get service provider profile
-export const getServiceProvider = async (req: Request, res: Response) => {
+export const getServiceProvider = async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Please authenticate.' });
+    }
+
     const serviceProvider = await ServiceProvider.findOne({ user: req.user._id })
       .populate('categories')
       .populate('services.category');
@@ -57,15 +66,19 @@ export const getServiceProvider = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Service provider not found' });
     }
 
-    res.json(serviceProvider);
+    return res.json(serviceProvider);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching service provider', error });
+    return res.status(500).json({ message: 'Error fetching service provider', error });
   }
 };
 
 // Update service provider profile
-export const updateServiceProvider = async (req: Request, res: Response) => {
+export const updateServiceProvider = async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Please authenticate.' });
+    }
+
     const updates = req.body;
     const allowedUpdates = [
       'businessName',
@@ -97,12 +110,12 @@ export const updateServiceProvider = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Service provider not found' });
     }
 
-    res.json({
+    return res.json({
       message: 'Service provider updated successfully',
       serviceProvider
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating service provider', error });
+    return res.status(500).json({ message: 'Error updating service provider', error });
   }
 };
 
@@ -180,7 +193,7 @@ export const searchServiceProviders = async (req: Request, res: Response) => {
       console.log('All providers in database:', JSON.stringify(allProviders, null, 2));
     }
 
-    res.json({
+    return res.json({
       serviceProviders,
       pagination: {
         total,
@@ -190,7 +203,7 @@ export const searchServiceProviders = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Search error:', error);
-    res.status(500).json({ message: 'Error searching service providers', error });
+    return res.status(500).json({ message: 'Error searching service providers', error });
   }
 };
 
@@ -203,14 +216,14 @@ export const getServiceProviderById = async (req: Request, res: Response) => {
     })
       .populate('categories')
       .populate('services.category')
-      .select('-contactInfo.email'); // Don't expose email publicly
+      .populate('user', 'firstName lastName businessName');
 
     if (!serviceProvider) {
       return res.status(404).json({ message: 'Service provider not found' });
     }
 
-    res.json(serviceProvider);
+    return res.json(serviceProvider);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching service provider', error });
+    return res.status(500).json({ message: 'Error fetching service provider', error });
   }
 }; 

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ServiceProvider } from '../models/ServiceProvider';
 import { Subscription } from '../models/Subscription';
 import { addDays } from 'date-fns';
+import { AuthRequest, SubscriptionRequest } from '../types/express';
 
 // Initialize subscription for new service provider
 export const initializeSubscription = async (serviceProviderId: string) => {
@@ -28,8 +29,12 @@ export const initializeSubscription = async (serviceProviderId: string) => {
 };
 
 // Get subscription status
-export const getSubscriptionStatus = async (req: Request, res: Response) => {
+export const getSubscriptionStatus = async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Please authenticate.' });
+    }
+
     const serviceProvider = await ServiceProvider.findOne({ user: req.user._id });
     if (!serviceProvider) {
       return res.status(404).json({ message: 'Service provider not found' });
@@ -40,7 +45,7 @@ export const getSubscriptionStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Subscription not found' });
     }
 
-    res.json({
+    return res.json({
       status: subscription.status,
       startDate: subscription.startDate,
       endDate: subscription.endDate,
@@ -50,14 +55,17 @@ export const getSubscriptionStatus = async (req: Request, res: Response) => {
       paymentStatus: subscription.paymentStatus
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching subscription status', error });
+    return res.status(500).json({ message: 'Error fetching subscription status', error });
   }
 };
 
 // Process subscription payment
-export const processSubscriptionPayment = async (req: Request, res: Response) => {
+export const processSubscriptionPayment = async (req: AuthRequest, res: Response) => {
   try {
-    const { paymentMethod } = req.body;
+    if (!req.user) {
+      return res.status(401).json({ message: 'Please authenticate.' });
+    }
+
     const serviceProvider = await ServiceProvider.findOne({ user: req.user._id });
     
     if (!serviceProvider) {
@@ -87,7 +95,7 @@ export const processSubscriptionPayment = async (req: Request, res: Response) =>
     serviceProvider.subscriptionEndDate = subscriptionEndDate;
     await serviceProvider.save();
 
-    res.json({
+    return res.json({
       message: 'Payment processed successfully',
       subscription: {
         status: subscription.status,
@@ -97,13 +105,17 @@ export const processSubscriptionPayment = async (req: Request, res: Response) =>
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error processing payment', error });
+    return res.status(500).json({ message: 'Error processing payment', error });
   }
 };
 
 // Check subscription status (middleware)
-export const checkSubscriptionStatus = async (req: Request, res: Response, next: Function) => {
+export const checkSubscriptionStatus = async (req: AuthRequest, res: Response, next: Function) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Please authenticate.' });
+    }
+
     const serviceProvider = await ServiceProvider.findOne({ user: req.user._id });
     if (!serviceProvider) {
       return res.status(404).json({ message: 'Service provider not found' });
@@ -126,9 +138,9 @@ export const checkSubscriptionStatus = async (req: Request, res: Response, next:
     }
 
     // Add subscription info to request
-    req.subscription = subscription;
+    (req as SubscriptionRequest).subscription = subscription;
     next();
   } catch (error) {
-    res.status(500).json({ message: 'Error checking subscription status', error });
+    return res.status(500).json({ message: 'Error checking subscription status', error });
   }
 }; 

@@ -101,14 +101,14 @@ export default function ProviderLogin() {
               label="تذكرني"
               {...register('rememberMe')}
             />
-            <FormLink href="/provider/forgot-password">نسيت كلمة المرور؟</FormLink>
+            <FormLink href="/provider/forgot-password" >نسيت كلمة المرور؟</FormLink>
           </div>
 
           {(error || authError) && (
             <FormError>{error || authError}</FormError>
           )}
 
-          <FormButton type="submit" isLoading={isLoading}>
+          <FormButton type="submit" className='text-white bg-black' isLoading={isLoading}>
             تسجيل الدخول
           </FormButton>
 

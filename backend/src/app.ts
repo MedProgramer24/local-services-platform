@@ -6,6 +6,9 @@ import authRoutes from './routes/auth';
 import serviceProviderRoutes from './routes/serviceProvider';
 import serviceCategoryRoutes from './routes/serviceCategory';
 import subscriptionRoutes from './routes/subscription';
+import servicesRoutes from './routes/services';
+import bookingsRoutes from './routes/bookings';
+import providerRoutes from './routes/provider';
 
 dotenv.config();
 
@@ -25,6 +28,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/service-providers', serviceProviderRoutes);
 app.use('/api/service-categories', serviceCategoryRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/services', servicesRoutes);
+app.use('/api/bookings', bookingsRoutes);
+app.use('/api/provider', providerRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

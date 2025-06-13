@@ -26,8 +26,12 @@ import {
   User,
   Settings,
   History,
-  Heart,
   MessageSquare,
+  Plus,
+  Edit,
+  Trash2,
+  DollarSign,
+  Users,
 } from "lucide-react";
 
 // Types
@@ -65,13 +69,13 @@ export default function CustomerDashboard() {
   });
 
   // Fetch favorite providers
-  const { data: favorites, isLoading: isLoadingFavorites } = useQuery<FavoriteProvider[]>({
-    queryKey: ['customer-favorites'],
-    queryFn: async () => {
-      const response = await api.get('/favorites');
-      return response.data;
-    }
-  });
+  // const { data: favorites, isLoading: isLoadingFavorites } = useQuery<FavoriteProvider[]>({
+  //   queryKey: ['customer-favorites'],
+  //   queryFn: async () => {
+  //     const response = await api.get('/favorites');
+  //     return response.data;
+  //   }
+  // });
 
   const renderBookingStatus = (status: string) => {
     const statusStyles = {
@@ -125,7 +129,7 @@ export default function CustomerDashboard() {
                     className="w-full justify-start"
                     onClick={() => setActiveTab('favorites')}
                   >
-                    <Heart className="ml-2 h-4 w-4" />
+                    <Star className="ml-2 h-4 w-4" />
                     المفضلة
                   </Button>
                   <Button
@@ -233,7 +237,7 @@ export default function CustomerDashboard() {
                       <CardDescription>مقدمي الخدمات المفضلين لديك</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {isLoadingFavorites ? (
+                      {/* {isLoadingFavorites ? (
                         <div className="text-center py-8">جاري التحميل...</div>
                       ) : favorites?.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
@@ -272,7 +276,7 @@ export default function CustomerDashboard() {
                             </div>
                           ))}
                         </div>
-                      )}
+                      )} */}
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -285,8 +289,14 @@ export default function CustomerDashboard() {
                       <CardDescription>محادثاتك مع مقدمي الخدمات</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-center py-8 text-gray-500">
-                        قريباً - سيتم إضافة نظام الرسائل
+                      <div className="text-center py-8">
+                        <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">نظام الرسائل</h3>
+                        <p className="text-gray-500 mb-4">تواصل مع مقدمي الخدمات مباشرة</p>
+                        <Button onClick={() => navigate('/chat')}>
+                          <MessageSquare className="ml-2 h-4 w-4" />
+                          فتح المحادثات
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -319,7 +329,7 @@ export default function CustomerDashboard() {
                             <p className="mt-1">{user?.city}</p>
                           </div>
                         </div>
-                        <Button className="mt-4">تعديل الملف الشخصي</Button>
+                        <Button className="mt-4" onClick={() => navigate('/profile/edit')}>تعديل الملف الشخصي</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -339,14 +349,14 @@ export default function CustomerDashboard() {
                             <h3 className="font-medium">الإشعارات</h3>
                             <p className="text-sm text-gray-500">تلقي إشعارات عن الحجوزات والتحديثات</p>
                           </div>
-                          <Button variant="outline">تعديل</Button>
+                          <Button variant="outline" onClick={() => navigate('/settings/notifications')}>تعديل</Button>
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
                             <h3 className="font-medium">تغيير كلمة المرور</h3>
                             <p className="text-sm text-gray-500">تحديث كلمة المرور الخاصة بك</p>
                           </div>
-                          <Button variant="outline">تغيير</Button>
+                          <Button variant="outline" onClick={() => navigate('/settings/change-password')}>تغيير</Button>
                         </div>
                         <div className="flex items-center justify-between">
                           <div>

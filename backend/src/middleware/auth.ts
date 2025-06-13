@@ -1,30 +1,41 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
-
-interface AuthRequest extends Request {
-  user?: any;
-}
+import { AuthRequest } from '../types/express';
 
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
-      throw new Error();
+      return res.status(401).json({ message: 'Please authenticate.' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key');
     const user = await User.findOne({ _id: (decoded as any)._id });
 
     if (!user) {
-      throw new Error();
+      return res.status(401).json({ message: 'Please authenticate.' });
     }
 
-    req.user = user;
+    req.user = {
+      _id: user._id.toString(),
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      businessName: user.businessName,
+      phoneNumber: user.phoneNumber,
+      address: user.address,
+      cities: user.cities,
+      serviceCategories: user.serviceCategories,
+      description: user.description,
+      commercialRegistration: user.commercialRegistration,
+    };
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Please authenticate.' });
+    return res.status(401).json({ message: 'Please authenticate.' });
   }
 };
 

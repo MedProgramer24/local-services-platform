@@ -23,6 +23,7 @@ type AuthContextType = {
   login: (email: string, password: string, type: 'customer' | 'provider') => Promise<void>;
   register: (userData: Partial<User> & { password: string; type: 'customer' | 'provider' }) => Promise<void>;
   logout: () => void;
+  updateUser: (userData: User) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -163,6 +164,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUser = (userData: User) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -173,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        updateUser,
       }}
     >
       {children}

@@ -4,16 +4,33 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import swaggerUi from 'swagger-ui-express';
+import http from 'http';
+import { Server as SocketIOServer, Socket } from 'socket.io';
 import authRoutes from './routes/auth';
 import serviceProviderRoutes from './routes/serviceProvider';
 import serviceCategoryRoutes from './routes/serviceCategory';
+import servicesRoutes from './routes/services';
+import bookingsRoutes from './routes/bookings';
+import providerRoutes from './routes/provider';
+import conversationRoutes from './routes/conversations';
 
 // Load environment variables
 dotenv.config();
 
 // Create Express app
 const app = express();
+const server = http.createServer(app);
+
+// Socket.IO setup
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: ['http://localhost:5173', 'http://localhost:8080'],
+    credentials: true
+  }
+});
+
+// Make socket instance available to controllers
+app.set('io', io);
 
 // Middleware
 app.use(express.json());
@@ -43,20 +60,69 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/souk-al-k
 app.use('/api/auth', authRoutes);
 app.use('/api/service-providers', serviceProviderRoutes);
 app.use('/api/service-categories', serviceCategoryRoutes);
+app.use('/api/services', servicesRoutes);
+app.use('/api/bookings', bookingsRoutes);
+app.use('/api/provider', providerRoutes);
+app.use('/api/conversations', conversationRoutes);
 
 // Health check route
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
+// --- Socket.IO Chat Events ---
+interface UserSocketMap {
+  [userId: string]: string; // userId -> socketId
+}
+const userSocketMap: UserSocketMap = {};
+
+io.on('connection', (socket: Socket) => {
+  // Authenticate user (for demo, userId is sent as query param)
+  const userId = socket.handshake.query.userId as string;
+  if (userId) {
+    userSocketMap[userId] = socket.id;
+    socket.join(userId); // Join room for private messages
+  }
+
+  // Join conversation room
+  socket.on('joinConversation', (conversationId: string) => {
+    socket.join(conversationId);
+  });
+
+  // Leave conversation room
+  socket.on('leaveConversation', (conversationId: string) => {
+    socket.leave(conversationId);
+  });
+
+  // Handle sending a message
+  socket.on('sendMessage', (data: any) => {
+    // data: { conversationId, message }
+    // Broadcast to all in the conversation room
+    io.to(data.conversationId).emit('newMessage', data.message);
+  });
+
+  // Handle marking as read
+  socket.on('markAsRead', (data: any) => {
+    // data: { conversationId, userId }
+    io.to(data.conversationId).emit('messagesRead', { conversationId: data.conversationId, userId: data.userId });
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    if (userId) {
+      delete userSocketMap[userId];
+    }
+  });
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 }); 

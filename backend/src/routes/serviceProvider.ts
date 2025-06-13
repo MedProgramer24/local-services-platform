@@ -8,6 +8,7 @@ import {
   getServiceProviderById
 } from '../controllers/serviceProviderController';
 import { auth, checkRole } from '../middleware/auth';
+import { ServiceProvider } from '../models/ServiceProvider'; // <-- Make sure this import exists
 
 const router = express.Router();
 
@@ -42,6 +43,16 @@ const serviceProviderValidation = [
     .withMessage('Invalid end time format (HH:mm)')
 ];
 
+// --- NEW: Get all providers for chat sidebar ---
+router.get('/', auth, async (req, res) => {
+  try {
+    const providers = await ServiceProvider.find({ isActive: true }).populate('user');
+    res.json({ providers });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch providers' });
+  }
+});
+
 // Protected routes (require authentication)
 router.post('/', auth, checkRole(['service_provider']), serviceProviderValidation, createServiceProvider);
 router.get('/profile', auth, checkRole(['service_provider']), getServiceProvider);
@@ -51,4 +62,4 @@ router.patch('/profile', auth, checkRole(['service_provider']), serviceProviderV
 router.get('/search', searchServiceProviders);
 router.get('/:id', getServiceProviderById);
 
-export default router; 
+export default router;

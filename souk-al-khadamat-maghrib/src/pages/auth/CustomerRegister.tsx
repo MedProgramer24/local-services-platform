@@ -192,7 +192,7 @@ export default function CustomerRegister() {
             <FormError>{error || authError}</FormError>
           )}
 
-          <FormButton type="submit" isLoading={isLoading}>
+          <FormButton type="submit" className='text-white bg-black' isLoading={isLoading}>
             إنشاء الحساب
           </FormButton>
 

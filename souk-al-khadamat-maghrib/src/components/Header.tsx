@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, X, User, LogOut, Settings, Home, Building2 } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings, Home, Building2, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Header() {
@@ -34,7 +34,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center space-x-2 space-x-reverse">
+        <Link to="/" className="flex  space-x-2 space-x-reverse">
           <Building2 className="h-6 w-6 text-primary-600" />
           <span className="font-bold text-xl">سوق الخدمات</span>
         </Link>
@@ -55,35 +55,52 @@ export default function Header() {
         {/* Desktop Auth Buttons */}
         <div className="hidden md:flex items-center space-x-4 space-x-reverse">
           {isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-9 w-9 p-0 rounded-full bg-transparent hover:bg-accent/50 grid place-items-center"
-                >
-                  <User className="h-5 w-5 text-foreground" />
+            <>
+              {/* Chat Link */}
+              <Link to="/chat">
+                <Button variant="ghost" size="sm" className="relative">
+                  <MessageSquare className="h-5 w-5" />
+                  {/* Unread badge - you can connect this to your conversation context */}
+                  {/* <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                    3
+                  </span> */}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user?.email}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate(user?.type === 'provider' ? '/provider/dashboard' : '/dashboard')}>
-                  <Settings className="ml-2 h-4 w-4" />
-                  <span>لوحة التحكم</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="ml-2 h-4 w-4" />
-                  <span>تسجيل الخروج</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </Link>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-9 w-9 p-0 rounded-full bg-transparent hover:bg-accent/50 grid place-items-end"
+                  >
+                    <User className="h-5 w-5 text-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate(user?.type === 'provider' ? '/provider/dashboard' : '/dashboard')}>
+                    <Settings className="ml-2 h-4 w-4" />
+                    <span>لوحة التحكم</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/chat')}>
+                    <MessageSquare className="ml-2 h-4 w-4" />
+                    <span>الرسائل</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="ml-2 h-4 w-4" />
+                    <span>تسجيل الخروج</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : (
             <>
               <Button variant="ghost" onClick={() => navigate('/login')}>
@@ -123,6 +140,17 @@ export default function Header() {
           </nav>
           {isAuthenticated ? (
             <div className="flex flex-col space-y-2">
+              <Button
+                variant="ghost"
+                className="justify-start"
+                onClick={() => {
+                  navigate('/chat');
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                <MessageSquare className="ml-2 h-4 w-4" />
+                <span>الرسائل</span>
+              </Button>
               <Button
                 variant="ghost"
                 className="justify-start"

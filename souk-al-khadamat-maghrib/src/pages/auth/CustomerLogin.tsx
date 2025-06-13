@@ -108,7 +108,7 @@ export default function CustomerLogin() {
             <FormError>{error || authError}</FormError>
           )}
 
-          <FormButton type="submit" isLoading={isLoading}>
+          <FormButton type="submit" className='text-white bg-black' isLoading={isLoading}>
             تسجيل الدخول
           </FormButton>
 

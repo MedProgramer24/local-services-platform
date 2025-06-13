@@ -450,8 +450,14 @@ export default function ProviderDashboard() {
                       <CardDescription>محادثاتك مع العملاء</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-center py-8 text-gray-500">
-                        قريباً - سيتم إضافة نظام الرسائل
+                      <div className="text-center py-8">
+                        <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">نظام الرسائل</h3>
+                        <p className="text-gray-500 mb-4">تواصل مع عملائك مباشرة</p>
+                        <Button onClick={() => navigate('/chat')}>
+                          <MessageSquare className="ml-2 h-4 w-4" />
+                          فتح المحادثات
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -484,7 +490,7 @@ export default function ProviderDashboard() {
                             <p className="mt-1">{user?.city}</p>
                           </div>
                         </div>
-                        <Button className="mt-4">تعديل الملف التجاري</Button>
+                        <Button className="mt-4" onClick={() => navigate('/profile/edit')}>تعديل الملف التجاري</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -504,7 +510,7 @@ export default function ProviderDashboard() {
                             <h3 className="font-medium">الإشعارات</h3>
                             <p className="text-sm text-gray-500">تلقي إشعارات عن الحجوزات والتحديثات</p>
                           </div>
-                          <Button variant="outline">تعديل</Button>
+                          <Button variant="outline" onClick={() => navigate('/settings/notifications')}>تعديل</Button>
                         </div>
                         <div className="flex items-center justify-between">
                           <div>
@@ -518,7 +524,7 @@ export default function ProviderDashboard() {
                             <h3 className="font-medium">تغيير كلمة المرور</h3>
                             <p className="text-sm text-gray-500">تحديث كلمة المرور الخاصة بك</p>
                           </div>
-                          <Button variant="outline">تغيير</Button>
+                          <Button variant="outline" onClick={() => navigate('/settings/change-password')}>تغيير</Button>
                         </div>
                       </div>
                     </CardContent>

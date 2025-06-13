@@ -15,6 +15,14 @@ export interface IUser extends Document {
   serviceCategories?: string[];
   description?: string;
   commercialRegistration?: string;
+  // Notification settings
+  notificationSettings?: {
+    bookingNotifications: boolean;
+    emailNotifications: boolean;
+    smsNotifications: boolean;
+    marketingNotifications: boolean;
+    reminderNotifications: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -78,6 +86,29 @@ const userSchema = new Schema<IUser>({
   commercialRegistration: {
     type: String,
     trim: true
+  },
+  // Notification settings
+  notificationSettings: {
+    bookingNotifications: {
+      type: Boolean,
+      default: false
+    },
+    emailNotifications: {
+      type: Boolean,
+      default: false
+    },
+    smsNotifications: {
+      type: Boolean,
+      default: false
+    },
+    marketingNotifications: {
+      type: Boolean,
+      default: false
+    },
+    reminderNotifications: {
+      type: Boolean,
+      default: false
+    }
   }
 }, {
   timestamps: true

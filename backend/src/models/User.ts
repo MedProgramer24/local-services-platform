@@ -9,6 +9,7 @@ export interface IUser extends Document {
   role: 'user' | 'admin' | 'service_provider';
   phoneNumber?: string;
   address?: string;
+  profileImage?: string; // URL to profile image
   // Provider specific fields
   businessName?: string;
   cities?: string[];
@@ -22,6 +23,11 @@ export interface IUser extends Document {
     smsNotifications: boolean;
     marketingNotifications: boolean;
     reminderNotifications: boolean;
+  };
+  // Payment metadata
+  metadata?: {
+    stripeCustomerId?: string;
+    [key: string]: any;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -63,6 +69,10 @@ const userSchema = new Schema<IUser>({
     trim: true
   },
   address: {
+    type: String,
+    trim: true
+  },
+  profileImage: {
     type: String,
     trim: true
   },
@@ -109,6 +119,11 @@ const userSchema = new Schema<IUser>({
       type: Boolean,
       default: false
     }
+  },
+  // Payment metadata
+  metadata: {
+    type: Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true

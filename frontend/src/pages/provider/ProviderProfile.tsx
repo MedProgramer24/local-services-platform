@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { StarIcon, MapPinIcon, PhoneIcon, EnvelopeIcon, ClockIcon, UsersIcon, TrophyIcon } from '@heroicons/react/24/solid';
 import { StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import Header from '@/components/Header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,6 +18,8 @@ interface Provider {
   _id: string;
   businessName: string;
   description: string;
+  profileImage?: string;
+  coverImage?: string;
   contactInfo: { 
     phone: string; 
     email?: string;
@@ -30,6 +32,7 @@ interface Provider {
     price: number; 
     duration: number;
     category: string;
+    images?: string[];
     isPopular?: boolean;
   }>;
   location: {
@@ -64,6 +67,7 @@ export default function ProviderProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'services' | 'reviews' | 'gallery'>('services');
   const [showAllServices, setShowAllServices] = useState(false);
@@ -181,29 +185,65 @@ export default function ProviderProfile() {
       <div className="min-h-screen bg-gray-50">
         {/* Hero Section */}
         <div className="relative bg-gradient-to-b from-primary-600 to-primary-700 text-white">
-          <div className="absolute inset-0 bg-black/20" />
+          {/* Cover Image */}
+          {provider.coverImage ? (
+            <div 
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${provider.coverImage})` }}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-primary-800" />
+          )}
+          <div className="absolute inset-0 bg-black/40" />
+          
           <div className="relative container mx-auto px-4 py-16">
             <div className="max-w-4xl mx-auto">
-              <div className="flex items-center space-x-4 space-x-reverse mb-6">
-                {provider.isVerified && (
-                  <Badge variant="secondary" className="bg-white/10 hover:bg-white/20">
-                    <TrophyIcon className="h-4 w-4 ml-1" />
-                    موثق
-                  </Badge>
-                )}
-                <Badge variant="secondary" className="bg-white/10 hover:bg-white/20">
-                  {provider.subscriptionStatus === 'active' ? 'نشط' : 'تجريبي'}
-                </Badge>
-              </div>
-              <h1 className="text-4xl font-bold mb-4">{provider.businessName}</h1>
-              <div className="flex items-center space-x-6 space-x-reverse">
-                <div className="flex items-center">
-                  {renderStars(provider.rating)}
-                  <span className="mr-2">({provider.totalReviews} تقييم)</span>
+              {/* Profile Image and Basic Info */}
+              <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6 md:space-x-reverse mb-8">
+                {/* Profile Image */}
+                <div className="relative">
+                  {provider.profileImage ? (
+                    <img
+                      src={provider.profileImage}
+                      alt={provider.businessName}
+                      className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/20 border-4 border-white shadow-lg flex items-center justify-center">
+                      <UsersIcon className="w-12 h-12 md:w-16 md:h-16 text-white/60" />
+                    </div>
+                  )}
+                  {provider.isVerified && (
+                    <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-1">
+                      <TrophyIcon className="h-4 w-4 text-white" />
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center">
-                  <MapPinIcon className="h-5 w-5 ml-1" />
-                  <span>{provider.location.city}</span>
+                
+                {/* Business Info */}
+                <div className="flex-1">
+                  <div className="flex items-center space-x-4 space-x-reverse mb-4">
+                    {provider.isVerified && (
+                      <Badge variant="secondary" className="bg-white/10 hover:bg-white/20">
+                        <TrophyIcon className="h-4 w-4 ml-1" />
+                        موثق
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="bg-white/10 hover:bg-white/20">
+                      {provider.subscriptionStatus === 'active' ? 'نشط' : 'تجريبي'}
+                    </Badge>
+                  </div>
+                  <h1 className="text-3xl md:text-4xl font-bold mb-2">{provider.businessName}</h1>
+                  <div className="flex items-center space-x-6 space-x-reverse">
+                    <div className="flex items-center">
+                      {renderStars(provider.rating)}
+                      <span className="mr-2">({provider.totalReviews} تقييم)</span>
+                    </div>
+                    <div className="flex items-center">
+                      <MapPinIcon className="h-5 w-5 ml-1" />
+                      <span>{provider.location.city}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -226,32 +266,57 @@ export default function ProviderProfile() {
                     providerId={provider._id}
                     onSuccess={() => {
                       // Refetch provider data to update the services list
-                      queryClient.invalidateQueries(['provider', id]);
+                      queryClient.invalidateQueries({ queryKey: ['provider', id] });
                     }}
                   />
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {provider.services.map((service) => (
-                    <Card key={service._id} className="group hover:border-primary-500 transition-colors">
+                    <Card key={service._id} className="group hover:border-primary-500 transition-colors overflow-hidden">
+                      {/* Service Image */}
+                      {service.images && service.images.length > 0 ? (
+                        <div className="relative h-48 bg-gray-200">
+                          <img
+                            src={service.images[0]}
+                            alt={service.name}
+                            className="w-full h-full object-cover"
+                          />
+                          {service.images.length > 1 && (
+                            <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                              +{service.images.length - 1} صور
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                          <div className="text-gray-400 text-center">
+                            <svg className="h-12 w-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <p className="text-sm">لا توجد صور</p>
+                          </div>
+                        </div>
+                      )}
+                      
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start">
-                          <div>
+                          <div className="flex-1">
                             <h3 className="font-semibold text-lg group-hover:text-primary-600 transition-colors">
                               {service.name}
                             </h3>
-                            <p className="text-gray-600 text-sm mt-1">{service.description}</p>
+                            <p className="text-gray-600 text-sm mt-1 line-clamp-2">{service.description}</p>
                             <div className="flex items-center mt-4 text-sm text-gray-500">
                               <ClockIcon className="h-4 w-4 ml-1" />
                               <span>{service.duration} دقيقة</span>
                             </div>
                           </div>
-                          <div className="text-left">
+                          <div className="text-left ml-4">
                             <div className="text-xl font-semibold text-primary-600 mb-4">
                               {service.price} درهم
                             </div>
                             <button
                               onClick={() => handleBooking(service._id)}
-                              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+                              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors text-sm"
                             >
                               حجز الخدمة
                             </button>

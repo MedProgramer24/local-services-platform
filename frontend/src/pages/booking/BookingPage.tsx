@@ -102,7 +102,7 @@ export default function BookingPage() {
       });
       
       if (response.data) {
-        navigate('/booking/success');
+        navigate(`/payment/${response.data.id}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'حدث خطأ أثناء الحجز');

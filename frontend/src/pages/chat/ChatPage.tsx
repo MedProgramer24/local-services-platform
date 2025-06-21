@@ -17,14 +17,18 @@ const ChatMainArea: React.FC = () => {
   console.log('should render chat:', !!(currentConversation || selectedProviderId));
   
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Debug Panel - only in development */}
       {process.env.NODE_ENV === 'development' && <ChatDebugPanel />}
       
       {(currentConversation || selectedProviderId) ? (
         <>
-          <ChatWindow />
-          <MessageInput />
+          <div className="flex-1 min-h-0">
+            <ChatWindow />
+          </div>
+          <div className="flex-shrink-0">
+            <MessageInput />
+          </div>
         </>
       ) : (
         <div className="flex-1 flex items-center justify-center text-gray-400 text-lg">
@@ -38,15 +42,17 @@ const ChatMainArea: React.FC = () => {
 const ChatPage: React.FC = () => {
   return (
     <ConversationProvider>
-      <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="flex flex-col h-screen bg-gray-50">
         <Header />
-        <main className="flex-1 flex h-[calc(100vh-64px-64px)]">
+        <main className="flex-1 flex h-[calc(100vh-128px)] min-h-0">
           {/* Sidebar */}
-          <div className="w-full max-w-xs border-l bg-white h-full">
+          <div className="w-full max-w-xs border-l bg-white h-full flex-shrink-0">
             <ConversationList />
           </div>
           {/* Main Chat Area */}
-          <ChatMainArea />
+          <div className="flex-1 flex flex-col min-h-0 bg-white">
+            <ChatMainArea />
+          </div>
         </main>
         <Footer />
       </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,27 +11,25 @@ import { Switch } from "@/components/ui/switch";
 import { Calendar, Clock, MapPin, DollarSign, Tag, Image, Plus, X } from "lucide-react";
 import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
+import { api } from '@/lib/api';
 
-// Mock categories - this would come from your API
-const serviceCategories = [
-  { id: 1, name: "السباكة", icon: "🔧" },
-  { id: 2, name: "الكهرباء", icon: "⚡" },
-  { id: 3, name: "التنظيف", icon: "🧹" },
-  { id: 4, name: "الطلاء", icon: "🎨" },
-  { id: 5, name: "البستنة", icon: "🌿" },
-  { id: 6, name: "إصلاح الأجهزة", icon: "🔧" },
-  { id: 7, name: "النقل", icon: "🚚" },
-  { id: 8, name: "الأمن", icon: "🔒" },
-];
+interface ServiceCategory {
+  _id: string;
+  name: string;
+  description: string;
+  icon?: string;
+}
 
 const cities = [
   "الدار البيضاء", "الرباط", "مراكش", "طنجة", "فاس", "أكادير", "مكناس", "وجدة",
-  "القنيطرة", "تطوان", "سلا", "بني ملال", "خريبكة", "آسفي", "الجديدة", "طنجة"
+  "القنيطرة", "تطوان", "سلا", "بني ملال", "خريبكة", "آسفي", "الجديدة"
 ];
 
 export default function NewService() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -60,6 +58,29 @@ export default function NewService() {
 
   const [newTag, setNewTag] = useState('');
   const [newCertification, setNewCertification] = useState('');
+
+  // Fetch categories from backend
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await api.get('/service-categories');
+        setServiceCategories(response.data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        // Fallback to some basic categories if API fails
+        setServiceCategories([
+          { _id: '1', name: 'السباكة', description: 'خدمات السباكة', icon: '🔧' },
+          { _id: '2', name: 'الكهرباء', description: 'خدمات الكهرباء', icon: '⚡' },
+          { _id: '3', name: 'التنظيف', description: 'خدمات التنظيف', icon: '🧹' },
+          { _id: '4', name: 'الحدادة', description: 'خدمات الحدادة', icon: '🔨' },
+        ]);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -119,11 +140,59 @@ export default function NewService() {
     const files = event.target.files;
     if (files) {
       const newImages = Array.from(files);
+      
+      // Validate file sizes (max 2MB each)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      const validImages = newImages.filter(file => {
+        if (file.size > maxSize) {
+          alert(`File ${file.name} is too large. Maximum size is 2MB.`);
+          return false;
+        }
+        return true;
+      });
+      
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, ...newImages]
+        images: [...prev.images, ...validImages]
       }));
     }
+  };
+
+  // Function to compress image
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculate new dimensions (max 800px width/height)
+        const maxSize = 800;
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress
+        ctx?.drawImage(img, 0, 0, width, height);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7); // 70% quality
+        resolve(compressedDataUrl);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const removeImage = (index: number) => {
@@ -137,12 +206,24 @@ export default function NewService() {
     e.preventDefault();
     
     try {
+      // Convert images to compressed base64
+      const imageUrls: string[] = [];
+      
+      if (formData.images.length > 0) {
+        // Compress and convert files to base64
+        for (const image of formData.images) {
+          const compressedBase64 = await compressImage(image);
+          imageUrls.push(compressedBase64);
+        }
+      }
+
       // Prepare the data for API submission
       const serviceData = {
-        title: formData.title,
+        name: formData.title,
         category: formData.category,
         description: formData.description,
         price: parseFloat(formData.price),
+        duration: 60,
         priceType: formData.priceType,
         location: formData.location,
         cities: formData.cities,
@@ -152,24 +233,13 @@ export default function NewService() {
         contactEmail: formData.contactEmail,
         experience: formData.experience,
         certifications: formData.certifications,
+        images: imageUrls, // Add compressed images to the service data
       };
 
       // Send to backend API
-      const response = await fetch('http://localhost:5000/api/services', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` // Add auth token
-        },
-        body: JSON.stringify(serviceData)
-      });
+      const response = await api.post('/services', serviceData);
 
-      if (!response.ok) {
-        throw new Error('Failed to create service');
-      }
-
-      const result = await response.json();
-      console.log('Service created successfully:', result);
+      console.log('Service created successfully:', response.data);
       
       // Navigate to provider dashboard
       navigate('/provider/dashboard');
@@ -219,11 +289,11 @@ export default function NewService() {
                   <Label htmlFor="category">فئة الخدمة *</Label>
                   <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="اختر فئة الخدمة" />
+                      <SelectValue placeholder={isLoadingCategories ? "جاري التحميل..." : "اختر فئة الخدمة"} />
                     </SelectTrigger>
                     <SelectContent>
                       {serviceCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.name}>
+                        <SelectItem key={category._id} value={category._id}>
                           <span className="ml-2">{category.icon}</span>
                           {category.name}
                         </SelectItem>
@@ -347,11 +417,13 @@ export default function NewService() {
                 {Object.entries(formData.availability).map(([day, schedule]) => (
                   <div key={day} className="flex items-center gap-4 p-3 border rounded-lg">
                     <div className="flex items-center space-x-2 space-x-reverse">
-                      <Switch
+                      <input
+                        type="checkbox"
                         checked={schedule.available}
-                        onCheckedChange={(checked) => handleAvailabilityChange(day, 'available', checked)}
+                        onChange={(e) => handleAvailabilityChange(day, 'available', e.target.checked)}
+                        className="rounded"
                       />
-                      <span className="min-w-[80px] text-sm font-medium">
+                      <span className="font-medium min-w-[80px]">
                         {day === 'monday' && 'الاثنين'}
                         {day === 'tuesday' && 'الثلاثاء'}
                         {day === 'wednesday' && 'الأربعاء'}
@@ -368,14 +440,14 @@ export default function NewService() {
                           type="time"
                           value={schedule.start}
                           onChange={(e) => handleAvailabilityChange(day, 'start', e.target.value)}
-                          className="w-32"
+                          className="w-24"
                         />
                         <span>إلى</span>
                         <Input
                           type="time"
                           value={schedule.end}
                           onChange={(e) => handleAvailabilityChange(day, 'end', e.target.value)}
-                          className="w-32"
+                          className="w-24"
                         />
                       </div>
                     )}

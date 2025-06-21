@@ -4,7 +4,7 @@
 @keyframes messageSlideIn {
   from {
     opacity: 0;
-    transform: translateY(20px) scale(0.95);
+    transform: translateY(10px) scale(0.95);
   }
   to {
     opacity: 1;
@@ -63,6 +63,90 @@
   animation: messageBounce 0.6s ease-in-out;
 }
 
+/* Chat image styling - remove white space */
+.chat-messages img {
+  margin: 0;
+  padding: 0;
+  display: block;
+  vertical-align: top;
+  line-height: 0;
+  font-size: 0;
+}
+
+.chat-messages .image-container {
+  display: inline-block;
+  line-height: 0;
+  vertical-align: top;
+  font-size: 0;
+}
+
+.chat-messages .image-wrapper {
+  display: inline-block;
+  line-height: 0;
+  vertical-align: top;
+  font-size: 0;
+}
+
+/* Messages container specific styling */
+.messages-container img {
+  margin: 0;
+  padding: 0;
+  display: block;
+  vertical-align: top;
+  line-height: 0;
+  font-size: 0;
+}
+
+.messages-container .image-container {
+  display: inline-block;
+  line-height: 0;
+  vertical-align: top;
+  font-size: 0;
+}
+
+.messages-container .image-wrapper {
+  display: inline-block;
+  line-height: 0;
+  vertical-align: top;
+  font-size: 0;
+}
+
+/* Message bubble image styling */
+.message-bubble img {
+  margin: 0;
+  padding: 0;
+  display: block;
+  vertical-align: top;
+  line-height: 0;
+  font-size: 0;
+}
+
+.message-bubble .image-container {
+  display: inline-block;
+  line-height: 0;
+  vertical-align: top;
+  font-size: 0;
+}
+
+.message-bubble .image-wrapper {
+  display: inline-block;
+  line-height: 0;
+  vertical-align: top;
+  font-size: 0;
+}
+
+/* Global image fix for chat */
+.chat-messages * img,
+.messages-container * img,
+.message-bubble * img {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  vertical-align: top !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+}
+
 /* Typing indicator */
 .typing-indicator {
   display: flex;
@@ -92,22 +176,46 @@
   animation-delay: -0.16s;
 }
 
-/* Scrollbar styling */
-.chat-scrollbar::-webkit-scrollbar {
-  width: 6px;
+/* Custom scrollbar for chat messages area */
+.messages-container::-webkit-scrollbar {
+  width: 12px;
 }
 
-.chat-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+.messages-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+  margin: 4px 0;
+  border: 1px solid #e2e8f0;
 }
 
-.chat-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.5);
-  border-radius: 3px;
+.messages-container::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  border: 1px solid #cbd5e1;
+  min-height: 40px;
 }
 
-.chat-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.8);
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+  border-color: #94a3b8;
+}
+
+.messages-container::-webkit-scrollbar-thumb:active {
+  background: #475569;
+  border-color: #64748b;
+}
+
+/* Firefox scrollbar styling */
+.messages-container {
+  scrollbar-width: auto;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+/* Always show scrollbar for better UX */
+.messages-container {
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable;
 }
 
 /* Glass morphism effects */
@@ -144,12 +252,12 @@
 
 /* Hover effects */
 .hover-lift {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .hover-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 /* Focus effects */
@@ -183,7 +291,8 @@
 }
 
 .message-status.sent {
-  color: rgba(255, 255, 255, 0.7);
+  color: #9ca3af;
+  animation: statusSent 0.3s ease-out;
 }
 
 .message-status.delivered {
@@ -191,7 +300,30 @@
 }
 
 .message-status.read {
-  color: #4ade80;
+  color: #3b82f6;
+  animation: statusRead 0.3s ease-out;
+}
+
+@keyframes statusRead {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes statusSent {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Responsive design */
@@ -217,11 +349,11 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
   
-  .chat-scrollbar::-webkit-scrollbar-thumb {
+  .messages-container::-webkit-scrollbar-thumb {
     background: rgba(156, 163, 175, 0.3);
   }
   
-  .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  .messages-container::-webkit-scrollbar-thumb:hover {
     background: rgba(156, 163, 175, 0.5);
   }
 }
@@ -245,4 +377,98 @@
     background: rgba(255, 255, 255, 0.9);
     border: 2px solid currentColor;
   }
+}
+
+/* Audio player improvements */
+.audio-player {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.audio-player:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+  border-color: #cbd5e1;
+}
+
+/* Image preview improvements */
+.image-preview {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.image-preview:hover {
+  transform: scale(1.02);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Recording indicator */
+.recording-indicator {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Smooth scrolling */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Ensure proper height constraints */
+.h-screen {
+  height: 100vh;
+}
+
+.min-h-0 {
+  min-height: 0;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+/* Chat layout improvements */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.chat-header {
+  flex-shrink: 0;
+}
+
+.chat-input {
+  flex-shrink: 0;
 } 

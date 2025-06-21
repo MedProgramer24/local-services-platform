@@ -225,9 +225,18 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
 
     // Process attachments if any
     const attachments: any[] = [];
+    console.log('=== BACKEND FILE PROCESSING ===');
+    console.log('req.files:', req.files);
+    console.log('req.files type:', typeof req.files);
+    console.log('req.files is array:', Array.isArray(req.files));
+    console.log('req.body:', req.body);
+    
     if (req.files && Array.isArray(req.files)) {
+      console.log('Processing', req.files.length, 'files');
       for (const file of req.files) {
+        console.log('Processing file:', file);
         const fileType = getFileType(file.mimetype);
+        console.log('File type:', fileType, 'MIME type:', file.mimetype);
         const attachment = {
           type: fileType,
           filename: file.filename,
@@ -238,11 +247,20 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
           thumbnailUrl: fileType === 'image' ? `/uploads/chat/images/${file.filename}` : undefined
         };
         attachments.push(attachment);
+        console.log('Created attachment:', attachment);
       }
+    } else {
+      console.log('No files found in request');
     }
+    
+    console.log('Final attachments array:', attachments);
 
     // Determine message type based on content and attachments
     let finalMessageType = messageType;
+    console.log('=== MESSAGE TYPE DETERMINATION ===');
+    console.log('Original messageType:', messageType);
+    console.log('Attachments length:', attachments.length);
+    
     if (attachments.length > 0) {
       if (attachments.every(att => att.type === 'image')) {
         finalMessageType = 'image';
@@ -254,12 +272,23 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
         finalMessageType = 'file';
       }
     }
-
+    
+    console.log('Final message type:', finalMessageType);
+    console.log('Content:', content);
+    console.log('Content is empty:', !content);
+    
     // Create message
+    const messageContent = content || (attachments.length > 0 ? 
+      (finalMessageType === 'audio' ? 'رسالة صوتية' : 
+       finalMessageType === 'image' ? 'صورة' : 
+       finalMessageType === 'document' ? 'مستند' : 'ملف') : 'رسالة نصية');
+    
+    console.log('Final message content:', messageContent);
+
     const message = new Message({
       conversationId,
       sender: userId,
-      content: content || (attachments.length > 0 ? 'Attachment' : ''),
+      content: messageContent,
       messageType: finalMessageType,
       attachments: attachments,
       replyTo: replyTo || null

@@ -6,6 +6,8 @@ export interface IServiceProvider extends Document {
   user: mongoose.Types.ObjectId | IUser;
   businessName: string;
   description: string;
+  profileImage?: string; // URL to profile image
+  coverImage?: string; // URL to cover image
   categories: mongoose.Types.ObjectId[] | IServiceCategory[];
   services: {
     name: string;
@@ -13,6 +15,7 @@ export interface IServiceProvider extends Document {
     price: number;
     duration: number; // in minutes
     category: mongoose.Types.ObjectId | IServiceCategory;
+    images?: string[]; // URLs to service images
   }[];
   location: {
     type: string;
@@ -65,6 +68,14 @@ const serviceProviderSchema = new Schema<IServiceProvider>({
     required: true,
     trim: true
   },
+  profileImage: {
+    type: String,
+    trim: true
+  },
+  coverImage: {
+    type: String,
+    trim: true
+  },
   categories: [{
     type: Schema.Types.ObjectId,
     ref: 'ServiceCategory',
@@ -95,7 +106,11 @@ const serviceProviderSchema = new Schema<IServiceProvider>({
       type: Schema.Types.ObjectId,
       ref: 'ServiceCategory',
       required: true
-    }
+    },
+    images: [{
+      type: String,
+      trim: true
+    }]
   }],
   location: {
     type: {

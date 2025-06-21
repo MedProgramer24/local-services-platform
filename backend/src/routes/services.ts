@@ -24,7 +24,23 @@ router.post('/', auth, checkRole(['service_provider']), [
       return res.status(401).json({ message: 'Please authenticate.' });
     }
 
-    const { name, category, description, price, duration } = req.body;
+    const { 
+      name, 
+      category, 
+      description, 
+      price, 
+      duration, 
+      images, 
+      priceType, 
+      location, 
+      cities, 
+      availability, 
+      tags, 
+      contactPhone, 
+      contactEmail, 
+      experience, 
+      certifications 
+    } = req.body;
 
     // Validate category exists
     const categoryExists = await ServiceCategory.findById(category);
@@ -32,10 +48,44 @@ router.post('/', auth, checkRole(['service_provider']), [
       return res.status(400).json({ message: 'Invalid category' });
     }
 
-    // Find the service provider
-    const serviceProvider = await ServiceProvider.findOne({ user: req.user._id });
+    // Find or create the service provider
+    let serviceProvider = await ServiceProvider.findOne({ user: req.user._id });
+    
     if (!serviceProvider) {
-      return res.status(404).json({ message: 'Service provider not found' });
+      // Create a new service provider with default values
+      serviceProvider = new ServiceProvider({
+        user: req.user._id,
+        businessName: req.user.firstName + ' ' + req.user.lastName,
+        description: 'Service provider',
+        categories: [category],
+        services: [],
+        location: {
+          type: 'Point',
+          coordinates: [0, 0], // Default coordinates
+          address: 'Address not set',
+          city: 'City not set',
+          state: 'State not set',
+          country: 'Country not set',
+          postalCode: '00000'
+        },
+        contactInfo: {
+          phone: req.user.phoneNumber || 'Phone not set',
+          email: req.user.email
+        },
+        availability: {
+          days: [
+            { day: 'monday', isAvailable: true, slots: [{ start: '09:00', end: '17:00' }] },
+            { day: 'tuesday', isAvailable: true, slots: [{ start: '09:00', end: '17:00' }] },
+            { day: 'wednesday', isAvailable: true, slots: [{ start: '09:00', end: '17:00' }] },
+            { day: 'thursday', isAvailable: true, slots: [{ start: '09:00', end: '17:00' }] },
+            { day: 'friday', isAvailable: true, slots: [{ start: '09:00', end: '17:00' }] },
+            { day: 'saturday', isAvailable: false, slots: [] },
+            { day: 'sunday', isAvailable: false, slots: [] }
+          ]
+        }
+      });
+      
+      await serviceProvider.save();
     }
 
     // Add new service to provider's services array
@@ -44,7 +94,8 @@ router.post('/', auth, checkRole(['service_provider']), [
       description,
       price: Number(price),
       duration: Number(duration),
-      category: category
+      category: category,
+      images: images || [] // Add images field
     });
 
     await serviceProvider.save();
@@ -60,6 +111,7 @@ router.post('/', auth, checkRole(['service_provider']), [
       description: newService.description,
       price: newService.price,
       duration: newService.duration,
+      images: newService.images,
       category: {
         id: newService.category._id,
         name: newService.category.name
@@ -69,7 +121,16 @@ router.post('/', auth, checkRole(['service_provider']), [
     });
   } catch (error) {
     console.error('Error creating service:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      user: req.user?._id,
+      body: req.body
+    });
+    return res.status(500).json({ 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+    });
   }
 });
 
@@ -81,7 +142,23 @@ router.put('/:id', auth, checkRole(['service_provider']), async (req: AuthReques
     }
 
     const { id } = req.params;
-    const { name, category, description, price, duration } = req.body;
+    const { 
+      name, 
+      category, 
+      description, 
+      price, 
+      duration, 
+      images, 
+      priceType, 
+      location, 
+      cities, 
+      availability, 
+      tags, 
+      contactPhone, 
+      contactEmail, 
+      experience, 
+      certifications 
+    } = req.body;
 
     // Find the service provider
     const serviceProvider = await ServiceProvider.findOne({ user: req.user._id });
@@ -104,6 +181,7 @@ router.put('/:id', auth, checkRole(['service_provider']), async (req: AuthReques
     if (price) serviceProvider.services[serviceIndex].price = Number(price);
     if (duration) serviceProvider.services[serviceIndex].duration = Number(duration);
     if (category) serviceProvider.services[serviceIndex].category = category;
+    if (images !== undefined) serviceProvider.services[serviceIndex].images = images;
 
     await serviceProvider.save();
 
@@ -118,6 +196,7 @@ router.put('/:id', auth, checkRole(['service_provider']), async (req: AuthReques
       description: updatedService.description,
       price: updatedService.price,
       duration: updatedService.duration,
+      images: updatedService.images,
       category: {
         id: updatedService.category._id,
         name: updatedService.category.name

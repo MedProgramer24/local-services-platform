@@ -35,7 +35,10 @@ const messageSchema = new Schema<IMessage>({
   },
   content: {
     type: String,
-    required: true,
+    required: function() {
+      // Content is required only if there are no attachments
+      return !this.attachments || this.attachments.length === 0;
+    },
     maxlength: 2000
   },
   messageType: {

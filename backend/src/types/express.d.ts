@@ -15,6 +15,10 @@ export interface AuthRequest extends Request {
     serviceCategories?: string[];
     description?: string;
     commercialRegistration?: string;
+    metadata?: {
+      stripeCustomerId?: string;
+      [key: string]: any;
+    };
   };
   subscription?: any;
 }

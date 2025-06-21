@@ -20,29 +20,35 @@ const seedData = async () => {
     await ServiceCategory.deleteMany({});
     await Booking.deleteMany({});
 
-    // Create service categories
+    // Create service categories with proper slugs
     const categories = await ServiceCategory.create([
       {
         name: 'السباكة',
         description: 'خدمات السباكة والإصلاح',
-        icon: '🔧'
+        icon: '🔧',
+        slug: 'plumbing'
       },
       {
         name: 'الكهرباء',
         description: 'خدمات الكهرباء والإصلاح',
-        icon: '⚡'
+        icon: '⚡',
+        slug: 'electrical'
       },
       {
         name: 'التنظيف',
         description: 'خدمات التنظيف والغسيل',
-        icon: '🧹'
+        icon: '🧹',
+        slug: 'cleaning'
       },
       {
         name: 'الحدادة',
         description: 'خدمات الحدادة واللحام',
-        icon: '🔨'
+        icon: '🔨',
+        slug: 'blacksmithing'
       }
     ]);
+
+    console.log('Categories created:', categories.length);
 
     // Create a provider user
     const hashedPassword = await bcrypt.hash('password123', 10);
@@ -54,6 +60,8 @@ const seedData = async () => {
       role: 'service_provider',
       isVerified: true
     });
+
+    console.log('Provider user created');
 
     // Create a service provider
     const serviceProvider = await ServiceProvider.create({
@@ -115,6 +123,8 @@ const seedData = async () => {
       subscriptionStatus: 'active'
     });
 
+    console.log('Service provider created');
+
     // Create customer users
     const customers = await User.create([
       {
@@ -142,6 +152,8 @@ const seedData = async () => {
         isVerified: true
       }
     ]);
+
+    console.log('Customer users created:', customers.length);
 
     // Create bookings
     await Booking.create([
@@ -198,9 +210,12 @@ const seedData = async () => {
     ]);
 
     console.log('Sample data seeded successfully!');
-    console.log('Provider login: mohamed@example.com / password123');
-    console.log('Customer login: ahmed@example.com / password123');
-
+    console.log('\nTest Accounts:');
+    console.log('Provider: mohamed@example.com / password123');
+    console.log('Customer: ahmed@example.com / password123');
+    console.log('Customer: fatima@example.com / password123');
+    console.log('Customer: mohamed.ali@example.com / password123');
+    
   } catch (error) {
     console.error('Error seeding data:', error);
   } finally {

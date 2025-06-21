@@ -13,10 +13,11 @@ import servicesRoutes from './routes/services';
 import bookingsRoutes from './routes/bookings';
 import providerRoutes from './routes/provider';
 import conversationRoutes from './routes/conversations';
+import paymentRoutes from './routes/payments';
 import path from 'path';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from config.env
+dotenv.config({ path: path.join(__dirname, '../config.env') });
 
 // Create Express app
 const app = express();
@@ -25,8 +26,9 @@ const server = http.createServer(app);
 // Socket.IO setup
 const io = new SocketIOServer(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:8080'],
-    credentials: true
+    origin: ['http://localhost:8080', 'http://localhost:3000', 'http://localhost:5173'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
   }
 });
 
@@ -34,12 +36,20 @@ const io = new SocketIOServer(server, {
 app.set('io', io);
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:8080'],
-  credentials: true
-}));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// CORS configuration
+const corsOptions = {
+  origin: ['http://localhost:8080', 'http://localhost:3000', 'http://localhost:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 app.use(helmet());
 
 // Rate limiting
@@ -65,9 +75,109 @@ app.use('/api/services', servicesRoutes);
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/provider', providerRoutes);
 app.use('/api/conversations', conversationRoutes);
+app.use('/api/payments', paymentRoutes);
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Specific route for serving images with CORS headers
+app.get('/uploads/chat/images/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const imagePath = path.join(__dirname, '../uploads/chat/images', filename);
+  
+  // Set CORS headers
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  
+  // Set appropriate content type based on file extension
+  const ext = path.extname(filename).toLowerCase();
+  const mimeTypes: { [key: string]: string } = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp'
+  };
+  
+  if (mimeTypes[ext]) {
+    res.header('Content-Type', mimeTypes[ext]);
+  }
+  
+  // Serve the file
+  res.sendFile(imagePath, (err) => {
+    if (err) {
+      console.error('Error serving image:', err);
+      res.status(404).json({ error: 'Image not found' });
+    }
+  });
+});
+
+// Specific route for serving audio files with CORS headers
+app.get('/uploads/chat/audio/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const audioPath = path.join(__dirname, '../uploads/chat/audio', filename);
+  
+  // Set CORS headers
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  res.header('Accept-Ranges', 'bytes');
+  
+  // Set appropriate content type based on file extension
+  const ext = path.extname(filename).toLowerCase();
+  const mimeTypes: { [key: string]: string } = {
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.ogg': 'audio/ogg',
+    '.webm': 'audio/webm',
+    '.m4a': 'audio/mp4'
+  };
+  
+  if (mimeTypes[ext]) {
+    res.header('Content-Type', mimeTypes[ext]);
+  }
+  
+  // Serve the file
+  res.sendFile(audioPath, (err) => {
+    if (err) {
+      console.error('Error serving audio:', err);
+      res.status(404).json({ error: 'Audio file not found' });
+    }
+  });
+});
+
+// Serve uploaded files with comprehensive CORS headers
+app.use('/uploads', (req, res, next) => {
+  // Set CORS headers for all origins
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Expose-Headers', 'Content-Length, Content-Type');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  // Add cache control headers for images
+  if (req.path.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+    res.header('Cache-Control', 'public, max-age=31536000');
+    res.header('Content-Type', 'image/' + req.path.split('.').pop());
+  }
+  
+  next();
+}, express.static(path.join(__dirname, '../uploads'), {
+  setHeaders: (res, path) => {
+    // Additional headers for static files
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  }
+}));
 
 // Health check route
 app.get('/health', (_req, res) => {

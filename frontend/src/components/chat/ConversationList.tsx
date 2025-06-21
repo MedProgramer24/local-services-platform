@@ -311,6 +311,8 @@ export default function ConversationList() {
     if (!conversation.lastMessage) return 'لا توجد رسائل';
     
     const content = conversation.lastMessage.content;
+    if (!content || typeof content !== 'string') return 'رسالة بدون نص';
+    
     return content.length > 30 ? content.substring(0, 30) + '...' : content;
   };
 

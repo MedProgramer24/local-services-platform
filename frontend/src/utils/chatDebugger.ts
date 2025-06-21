@@ -15,7 +15,11 @@ export const chatDebugger = {
     console.log('Conversation participants:', conversation?.participants);
     console.log('Current user in participants:', conversation?.participants?.some((p: any) => (p.id || p._id) === user?.id));
     console.log('Messages count:', messages?.length);
-    console.log('Messages:', messages?.map(m => ({ id: m._id, sender: m.senderId, content: m.content.substring(0, 50) })));
+    console.log('Messages:', messages?.map(m => ({ 
+      id: m._id, 
+      sender: m.senderId, 
+      content: m.content ? m.content.substring(0, 50) : 'No content' 
+    })));
   },
 
   logMessageFlow: (message: any, conversationId: string, user: any) => {

@@ -45,14 +45,95 @@ const MessageInput: React.FC = () => {
     
     setSending(true);
     try {
-      const formData = new FormData();
-      formData.append('content', value.trim());
-      
-      // Add attachments
-      attachments.forEach((file, index) => {
-        console.log(`Adding attachment ${index}:`, file.name, file.type, file.size);
-        formData.append('attachments', file);
-      });
+      let formData: FormData | undefined;
+
+      // Only create FormData if there are attachments
+      if (attachments.length > 0) {
+        // Filter out invalid files - be more flexible with file validation
+        const validAttachments = attachments.filter(file => {
+          // Check if it has the required properties for upload (works for both File objects and our custom File-like objects)
+          if (file && typeof file === 'object' && 'name' in file && 'size' in file && 'type' in file) {
+            console.log('Valid file object:', file.name, file.type, file.size);
+            return true;
+          }
+          
+          console.warn('Invalid file object:', file);
+          return false;
+        });
+        
+        if (validAttachments.length === 0) {
+          console.error('No valid files found, cannot send message');
+          alert('لا توجد ملفات صالحة لإرسالها');
+          setSending(false);
+          return;
+        }
+        
+        formData = new FormData();
+        
+        // Only append content if it's not empty
+        if (value.trim()) {
+          formData.append('content', value.trim());
+        }
+        
+        // Add attachments
+        validAttachments.forEach((file, index) => {
+          console.log(`Adding attachment ${index}:`, file.name, file.type, file.size);
+          console.log('File object:', file);
+          console.log('File type:', typeof file);
+          
+          // Check if it's a regular File object (without using instanceof)
+          const isRegularFile = file && typeof file === 'object' && 'name' in file && 'size' in file && 'type' in file && !('_blob' in file);
+          
+          if (isRegularFile) {
+            console.log('Using regular File object');
+            formData!.append('attachments', file);
+          } else {
+            // For our custom File-like objects, use the stored Blob data
+            console.log('Using custom File-like object');
+            const blob = (file as any)._blob || file;
+            console.log('Blob extracted:', blob);
+            console.log('Blob type:', typeof blob);
+            console.log('Blob instanceof Blob:', blob instanceof Blob);
+            console.log('Blob size:', blob.size);
+            console.log('Blob type:', blob.type);
+            
+            try {
+              const fileWithName = new File([blob], file.name, { type: file.type });
+              console.log('File created from blob:', fileWithName);
+              console.log('New file size:', fileWithName.size);
+              console.log('New file type:', fileWithName.type);
+              formData!.append('attachments', fileWithName);
+              console.log('File appended to FormData successfully');
+            } catch (error) {
+              console.error('Error creating File from blob:', error);
+              // Fallback: try to append the blob directly
+              try {
+                formData!.append('attachments', blob, file.name);
+                console.log('Blob appended directly to FormData');
+              } catch (fallbackError) {
+                console.error('Fallback also failed:', fallbackError);
+                throw new Error('Failed to create uploadable file');
+              }
+            }
+          }
+        });
+        
+        // Debug FormData contents
+        console.log('FormData created with attachments');
+        for (let [key, value] of formData.entries()) {
+          console.log(`FormData entry: ${key} =`, value);
+        }
+      } else {
+        console.log('No attachments, will send as JSON');
+      }
+
+      // Final check: ensure we have either content or valid attachments
+      if (!value.trim() && (!formData || !formData.has('attachments'))) {
+        console.error('No content and no valid attachments, cannot send message');
+        alert('يرجى إدخال نص أو إرفاق ملف');
+        setSending(false);
+        return;
+      }
 
       if (currentConversation) {
         // Send message to existing conversation
@@ -173,31 +254,41 @@ const MessageInput: React.FC = () => {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const extension = mimeType.includes('webm') ? 'webm' : mimeType.includes('mp4') ? 'm4a' : 'wav';
         
-        // Create file object in a browser-compatible way
-        let audioFile: File;
-        try {
-          audioFile = new File([audioBlob], `voice-message-${timestamp}.${extension}`, { 
-            type: mimeType 
-          });
-        } catch (error) {
-          console.log('File constructor not available, using fallback method');
-          audioFile = {
-            name: `voice-message-${timestamp}.${extension}`,
-            type: mimeType,
-            size: audioBlob.size,
-            lastModified: Date.now(),
-            slice: audioBlob.slice.bind(audioBlob),
-            stream: audioBlob.stream.bind(audioBlob),
-            text: audioBlob.text.bind(audioBlob),
-            arrayBuffer: audioBlob.arrayBuffer.bind(audioBlob)
-          } as File;
-        }
+        // Create a File-like object that works in all environments
+        const audioFile: File = {
+          // Include the actual Blob data
+          _blob: audioBlob,
+          
+          // Inherit all Blob properties
+          size: audioBlob.size,
+          type: audioBlob.type,
+          arrayBuffer: audioBlob.arrayBuffer.bind(audioBlob),
+          slice: audioBlob.slice.bind(audioBlob),
+          stream: audioBlob.stream.bind(audioBlob),
+          text: audioBlob.text.bind(audioBlob),
+          
+          // Add File-specific properties
+          name: `voice-message-${timestamp}.${extension}`,
+          lastModified: Date.now()
+        } as File;
         
-        console.log('Audio file created:', audioFile.name, audioFile.size, 'bytes');
+        console.log('Audio file created successfully:', audioFile.name, audioFile.size, 'bytes');
+        console.log('File type:', typeof audioFile);
+        console.log('Has name property:', 'name' in audioFile);
+        console.log('Has size property:', 'size' in audioFile);
+        
+        // Check if the file has actual data
+        if (audioFile.size === 0) {
+          console.error('Audio file has no data!');
+          alert('لم يتم تسجيل أي صوت. يرجى المحاولة مرة أخرى.');
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
         
         // Check file size (max 10MB)
         if (audioFile.size > 10 * 1024 * 1024) {
           alert('الرسالة الصوتية كبيرة جداً. الحد الأقصى 10 ميجابايت.');
+          stream.getTracks().forEach(track => track.stop());
           return;
         }
         
@@ -271,25 +362,7 @@ const MessageInput: React.FC = () => {
         setTimeout(() => {
           console.log('Fallback: Checking if audio file was created...');
           if (attachments.length === 0) {
-            console.log('No audio file created, attempting manual creation...');
-            try {
-              // Try to create a minimal audio file for testing
-              const testBlob = new Blob(['test'], { type: 'audio/webm' });
-              const testFile = {
-                name: `test-audio-${Date.now()}.webm`,
-                type: 'audio/webm',
-                size: testBlob.size,
-                lastModified: Date.now(),
-                slice: testBlob.slice.bind(testBlob),
-                stream: testBlob.stream.bind(testBlob),
-                text: testBlob.text.bind(testBlob),
-                arrayBuffer: testBlob.arrayBuffer.bind(testBlob)
-              } as File;
-              setAttachments(prev => [...prev, testFile]);
-              console.log('Test audio file created manually');
-            } catch (error) {
-              console.error('Error creating fallback file:', error);
-            }
+            console.log('No audio file created, this might indicate an issue with the recording process');
           }
         }, 3000); // Increased timeout to 3 seconds
         
@@ -310,8 +383,23 @@ const MessageInput: React.FC = () => {
   };
 
   const getFileIcon = (file: File) => {
-    if (file.type.startsWith('image/')) return <Image className="h-4 w-4" />;
-    if (file.type.startsWith('audio/')) return <FileAudio className="h-4 w-4" />;
+    // Safely check file type
+    const fileType = file.type || '';
+    const fileName = file.name || '';
+    
+    // Try to determine type from file extension if MIME type is not available
+    if (!fileType && fileName) {
+      const extension = fileName.split('.').pop()?.toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) {
+        return <Image className="h-4 w-4" />;
+      }
+      if (['mp3', 'wav', 'ogg', 'webm', 'm4a'].includes(extension || '')) {
+        return <FileAudio className="h-4 w-4" />;
+      }
+    }
+    
+    if (fileType.startsWith('image/')) return <Image className="h-4 w-4" />;
+    if (fileType.startsWith('audio/')) return <FileAudio className="h-4 w-4" />;
     return <File className="h-4 w-4" />;
   };
 
@@ -328,8 +416,12 @@ const MessageInput: React.FC = () => {
           {attachments.map((file, index) => (
             <div key={index} className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
               {getFileIcon(file)}
-              <span className="text-xs text-gray-700 truncate max-w-24">{file.name}</span>
-              <span className="text-xs text-gray-500">{formatFileSize(file.size)}</span>
+              <span className="text-xs text-gray-700 truncate max-w-24">
+                {file.name || 'Unknown file'}
+              </span>
+              <span className="text-xs text-gray-500">
+                {file.size ? formatFileSize(file.size) : 'Unknown size'}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"

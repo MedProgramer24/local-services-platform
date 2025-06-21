@@ -102,6 +102,21 @@ router.get('/audio/:filename', (req, res) => {
   });
 });
 
+// Test endpoint for debugging
+router.post('/test-message', auth, (req, res) => {
+  console.log('=== TEST MESSAGE ENDPOINT ===');
+  console.log('Request body:', req.body);
+  console.log('Request files:', req.files);
+  console.log('User:', req.user);
+  
+  res.json({ 
+    message: 'Test endpoint working',
+    body: req.body,
+    files: req.files,
+    user: req.user
+  });
+});
+
 // Get all conversations for the authenticated user
 router.get('/', auth, getConversations);
 

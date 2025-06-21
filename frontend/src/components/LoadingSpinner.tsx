@@ -1,3 +1,4 @@
+import React from 'react';
 import { cn } from "@/lib/utils";
 
 interface LoadingSpinnerProps {
@@ -6,36 +7,15 @@ interface LoadingSpinnerProps {
   text?: string;
 }
 
-export default function LoadingSpinner({ 
-  size = "md", 
-  className,
-  text = "جاري التحميل..." 
-}: LoadingSpinnerProps) {
-  const sizeClasses = {
-    sm: "h-4 w-4",
-    md: "h-8 w-8",
-    lg: "h-12 w-12",
-    xl: "h-16 w-16"
-  };
-
+export const LoadingSpinner: React.FC = () => {
   return (
-    <div className={cn("flex flex-col items-center justify-center space-y-4", className)}>
-      <div className="relative">
-        <div className={cn(
-          "animate-spin rounded-full border-4 border-moroccan-orange/20 border-t-moroccan-orange",
-          sizeClasses[size]
-        )} />
-        <div className={cn(
-          "absolute inset-0 rounded-full border-2 border-moroccan-teal/30 animate-pulse",
-          sizeClasses[size]
-        )} />
-      </div>
-      {text && (
-        <p className="text-sm text-muted-foreground animate-pulse">{text}</p>
-      )}
+    <div className="flex justify-center items-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
     </div>
   );
-}
+};
+
+export default LoadingSpinner;
 
 // Skeleton loader for content
 export function SkeletonLoader({ className }: { className?: string }) {

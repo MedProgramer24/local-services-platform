@@ -9,6 +9,7 @@ import subscriptionRoutes from './routes/subscription';
 import servicesRoutes from './routes/services';
 import bookingsRoutes from './routes/bookings';
 import providerRoutes from './routes/provider';
+import paymentRoutes from './routes/payments';
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/provider', providerRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

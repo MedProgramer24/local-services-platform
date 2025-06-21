@@ -72,8 +72,14 @@ const App = () => (
                 <Route path="/provider/login" element={<ProviderLogin />} />
                 <Route path="/provider/register" element={<ProviderRegister />} />
                 <Route path="/provider/:id" element={<ProviderProfile />} />
-                <Route path="/booking/:id" element={<BookingPage />} />
-                <Route path="/payment/:bookingId" element={<PaymentPage />} />
+                <Route 
+                  path="/booking/:id" 
+                  element={
+                    <FlexibleProtectedRoute>
+                      <BookingPage />
+                    </FlexibleProtectedRoute>
+                  } 
+                />
                 <Route path="/services" element={<AllCategories />} />
                 <Route path="/providers" element={<AllProviders />} />
                 <Route path="/booking/success" element={<div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-lg shadow text-center"><h2 className="text-2xl font-bold mb-4">تم الحجز بنجاح!</h2><p className="text-gray-700">شكراً لاستخدامك منصتنا. سيتم التواصل معك قريباً لتأكيد الحجز.</p></div></div>} />

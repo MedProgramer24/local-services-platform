@@ -60,6 +60,7 @@ interface ConversationContextType {
   setMessages: (messages: Message[]) => void;
   clearConversation: (providerId?: string) => void;
   setSelectedProviderId: (providerId: string | null) => void;
+  testConnection: () => Promise<any>;
 }
 
 const ConversationContext = createContext<ConversationContextType | undefined>(undefined);
@@ -323,6 +324,30 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
     return conversation;
   };
 
+  // Test function for debugging
+  const testConnection = async () => {
+    console.log('=== TESTING CONNECTION ===');
+    try {
+      const response = await fetch('http://localhost:5000/api/conversations/test-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ test: 'Hello from frontend' })
+      });
+      
+      console.log('Test response status:', response.status);
+      const data = await response.json();
+      console.log('Test response data:', data);
+      
+      return data;
+    } catch (error) {
+      console.error('Test connection error:', error);
+      throw error;
+    }
+  };
+
   // Send a message
   const sendMessage = async (conversationId: string, content: string, formData?: FormData) => {
     if (!isAuthenticated || !socketRef.current) throw new Error('Not connected');
@@ -339,6 +364,7 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
       
       if (formData) {
         // Send with attachments
+        console.log('Sending with FormData...');
         response = await fetch(`http://localhost:5000/api/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: {
@@ -348,17 +374,37 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
         });
       } else {
         // Send text only
+        console.log('Sending as JSON...');
+        const requestBody = { content };
+        console.log('Request body:', requestBody);
+        
         response = await fetch(`http://localhost:5000/api/conversations/${conversationId}/messages`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
-          body: JSON.stringify({ content })
+          body: JSON.stringify(requestBody)
         });
       }
       
-      if (!response.ok) throw new Error('Failed to send message');
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        
+        let errorMessage = 'Failed to send message';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        
+        throw new Error(errorMessage);
+      }
       
       const data = await response.json();
       console.log('Message sent successfully:', data.message._id);
@@ -377,6 +423,11 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       throw error;
     }
   };
@@ -540,7 +591,8 @@ export const ConversationProvider: React.FC<ConversationProviderProps> = ({ chil
     setCurrentConversation,
     setMessages,
     clearConversation,
-    setSelectedProviderId
+    setSelectedProviderId,
+    testConnection
   };
 
   return (

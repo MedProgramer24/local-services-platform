@@ -8,51 +8,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
 });
 
-// Create payment intent for booking
-export const createBookingPayment = async (req: AuthRequest, res: Response) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Please authenticate.' });
-    }
-
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
-      });
-    }
-
-    const { providerId, bookingId, amount, description } = req.body;
-
-    const result = await PaymentService.createBookingPayment(
-      req.user._id,
-      providerId,
-      bookingId,
-      amount,
-      description
-    );
-
-    return res.status(201).json({
-      message: 'Payment intent created successfully',
-      payment: {
-        id: result.payment._id,
-        amount: result.payment.amount,
-        currency: result.payment.currency,
-        status: result.payment.status,
-        description: result.payment.description,
-      },
-      clientSecret: result.clientSecret,
-    });
-  } catch (error: any) {
-    console.error('Error creating booking payment:', error);
-    return res.status(500).json({ 
-      message: 'Error creating payment intent',
-      error: error.message 
-    });
-  }
-};
-
 // Create payment intent for subscription
 export const createSubscriptionPayment = async (req: AuthRequest, res: Response) => {
   try {
@@ -340,13 +295,6 @@ export const getPaymentMethods = async (req: AuthRequest, res: Response) => {
 };
 
 // Validation middleware
-export const validateBookingPayment = [
-  body('providerId').isMongoId().withMessage('Valid provider ID is required'),
-  body('bookingId').isMongoId().withMessage('Valid booking ID is required'),
-  body('amount').isFloat({ min: 0.01 }).withMessage('Valid amount is required'),
-  body('description').notEmpty().withMessage('Description is required'),
-];
-
 export const validateSubscriptionPayment = [
   body('amount').isFloat({ min: 0.01 }).withMessage('Valid amount is required'),
   body('description').notEmpty().withMessage('Description is required'),

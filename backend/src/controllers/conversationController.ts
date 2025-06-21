@@ -204,13 +204,30 @@ export const createConversation = async (req: AuthRequest, res: Response) => {
 // Send a message
 export const sendMessage = async (req: AuthRequest, res: Response) => {
   try {
+    console.log('=== BACKEND SEND MESSAGE START ===');
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
+    console.log('Request headers:', req.headers);
+    console.log('Request body:', req.body);
+    console.log('Request files:', req.files);
+    console.log('User:', req.user);
+    
     if (!req.user) {
+      console.error('No user found in request');
       return res.status(401).json({ message: 'Please authenticate.' });
     }
 
     const { conversationId } = req.params;
     const { content, messageType = 'text', replyTo } = req.body;
     const userId = req.user._id;
+
+    console.log('Extracted data:', {
+      conversationId,
+      content,
+      messageType,
+      replyTo,
+      userId
+    });
 
     // Verify conversation exists and user is participant
     const conversation = await Conversation.findOne({
@@ -220,8 +237,11 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     });
 
     if (!conversation) {
+      console.error('Conversation not found or user not participant');
       return res.status(404).json({ message: 'المحادثة غير موجودة' });
     }
+
+    console.log('Conversation found:', conversation._id);
 
     // Process attachments if any
     const attachments: any[] = [];
@@ -257,44 +277,37 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
 
     // Determine message type based on content and attachments
     let finalMessageType = messageType;
-    console.log('=== MESSAGE TYPE DETERMINATION ===');
-    console.log('Original messageType:', messageType);
-    console.log('Attachments length:', attachments.length);
-    
     if (attachments.length > 0) {
-      if (attachments.every(att => att.type === 'image')) {
-        finalMessageType = 'image';
-      } else if (attachments.every(att => att.type === 'audio')) {
-        finalMessageType = 'audio';
-      } else if (attachments.every(att => att.type === 'document')) {
-        finalMessageType = 'document';
-      } else {
-        finalMessageType = 'file';
-      }
+      // If there's only one attachment, use its type.
+      // If multiple, use 'file' as a generic type for mixed content.
+      finalMessageType = attachments.length === 1 ? attachments[0].type : 'file';
     }
     
-    console.log('Final message type:', finalMessageType);
-    console.log('Content:', content);
-    console.log('Content is empty:', !content);
-    
-    // Create message
-    const messageContent = content || (attachments.length > 0 ? 
-      (finalMessageType === 'audio' ? 'رسالة صوتية' : 
-       finalMessageType === 'image' ? 'صورة' : 
-       finalMessageType === 'document' ? 'مستند' : 'ملف') : 'رسالة نصية');
-    
-    console.log('Final message content:', messageContent);
-
-    const message = new Message({
+    // Create new message
+    const messageData: any = {
       conversationId,
       sender: userId,
-      content: messageContent,
       messageType: finalMessageType,
-      attachments: attachments,
-      replyTo: replyTo || null
-    });
+      attachments,
+      replyTo: replyTo || null,
+      isRead: false
+    };
 
+    // Only include content if it's not empty or if there are no attachments
+    if ((content && content.trim() !== '') || attachments.length === 0) {
+      messageData.content = content || '';
+    }
+
+    console.log('Message data to be created:', messageData);
+    console.log('Content included:', !!messageData.content);
+    console.log('Content value:', messageData.content);
+    console.log('Attachments count:', attachments.length);
+
+    const message = new Message(messageData);
+
+    console.log('Message object created, attempting to save...');
     await message.save();
+    console.log('Message saved successfully:', message._id);
 
     // Update conversation unread count for other participant
     const otherParticipant = conversation.participants.find(

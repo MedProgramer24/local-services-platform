@@ -146,6 +146,8 @@ export default function ProviderProfile() {
   }
 
   const handleBooking = (serviceId: string) => {
+    console.log('Booking service ID:', serviceId);
+    console.log('Service details:', provider.services.find(s => s._id === serviceId));
     navigate(`/booking/${id}?service=${serviceId}`);
   };
 
